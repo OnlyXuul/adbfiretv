@@ -11,8 +11,7 @@ odin build .
 
 ADB (Android Debug Bridge) is required.
 
-Install in Ubuntu:
-
+Install in Ubuntu:\n
 sudo apt install adb
 
 Install in Windows:
