@@ -15,7 +15,7 @@ Install in Ubuntu:<br />
 sudo apt install adb
 
 Install in Windows:<br />
-winget install --id Google.PlatformTools
+winget install Google.PlatformTools
 
 For command help type:<br />
 
