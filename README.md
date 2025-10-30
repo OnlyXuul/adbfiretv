@@ -9,6 +9,14 @@ Compile with Odin:
 In the terminal, navigate to the folder where this code is located.
 odin build .
 
+ADB (Android Debug Bridge) is required.
+
+Install in Ubuntu:
+sudo apt install adb
+
+Install in Windows:
+winget install --id Google.PlatformTools
+
 For command help type:
 
 Linux:
