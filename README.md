@@ -6,8 +6,8 @@ Install Odin See:<br />
 https://odin-lang.org/docs/<br />
 <br />
 Compile with Odin:<br />
-In the terminal, navigate to the folder where this code is located.<br />
-odin build .<br />
+- Item 1 In the terminal, navigate to the folder where this code is located.<br />
+- Item 2 odin build .<br />
 <br />
 ADB (Android Debug Bridge) and Developer Options enabled in the FireOS is required.<br />
 <br />
