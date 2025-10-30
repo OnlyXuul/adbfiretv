@@ -6,7 +6,7 @@ Install Odin See:<br />
 https://odin-lang.org/docs/
 
 Compile with Odin:<br />
-In the terminal, navigate to the folder where this code is located.
+In the terminal, navigate to the folder where this code is located.<br />
 odin build .
 
 ADB (Android Debug Bridge) is required.
