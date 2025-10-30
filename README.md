@@ -12,9 +12,11 @@ odin build .
 ADB (Android Debug Bridge) is required.
 
 Install in Ubuntu:
+
 sudo apt install adb
 
 Install in Windows:
+
 winget install --id Google.PlatformTools
 
 For command help type:
