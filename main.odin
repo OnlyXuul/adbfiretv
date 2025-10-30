@@ -762,8 +762,11 @@ main :: proc() {
 					else {
 						adb.command = { "adb", "shell", "pm", "list", "packages", "-3" }
 						exec_command(&p, adb)
-						packages, p_ok := remove(string(p.stdout), "package:", -1)
-						if contains(string(packages), os.args[idx+1] ) {
+						user_packages, up_ok := remove(string(p.stdout), "package:", -1)
+						adb.command = {"adb", "shell", "pm", "list", "packages", "-s"}
+						exec_command(&p, adb)
+						system_packages, sp_ok := remove(string(p.stdout), "package:", -1)
+						if contains(string(user_packages), os.args[idx+1]) || contains(string(system_packages), os.args[idx+1]) {
 							adb.command = {"adb", "shell", "dumpsys", "diskstats"}
 							exec_command(&p, adb)
 							parse_package_size(p.stdout, os.args[idx+1])
