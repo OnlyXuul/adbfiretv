@@ -471,7 +471,7 @@ print_usage :: proc() {
 	printfc(INFO, "%-*s", col[2], "<package>")
 	description = split_max_width(max_width - col[3],
 		"Clears cache for the specified package name. "+
-		"Take cear with what packages you clear. "+
+		"Take care with what packages you clear. "+
 		"Some apps may revert to new install configuration like Kodi does.")
 	for d, i in description {
 		if i == 0 { printfcln(OUTPUT, "%s", d) }
@@ -482,7 +482,7 @@ print_usage :: proc() {
 	printfc(INFO, "%-*s", col[2], "<package>")
 	description = split_max_width(max_width - col[3],
 		"Clears data for the specified package name. "+
-		"Take cear with what packages you clear. "+
+		"Take care with what packages you clear. "+
 		"Some apps may revert to new install configuration like Kodi does.")
 	for d, i in description {
 		if i == 0 { printfcln(OUTPUT, "%s", d) }
