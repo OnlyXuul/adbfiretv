@@ -16,8 +16,8 @@ For a while I was maintining scripts in both Powershell and Linux Bash to execut
 | -m          | -memoryusage | package name           | Outputs current memory usage of specified package name.
 | -p          | -packages    | user or system         | Lists (3rd Party) 'user' installed packages or (FireOS) 'system' installed packages.
 | -s          | -space       | system or package name | Outputs disk space usage for either 'system' or specified package name.
-| -clearcache |              | package name           | Clears cache for the specified package name. Take cear with what packages you clear. Some apps may revert to new install configuration like Kodi does.
-| -cleardata  |              | package name           | Clears data for the specified package name. Take cear with what packages you clear. Some apps may revert to new install configuration like Kodi does.
+| -clearcache |              | package name           | Clears cache for the specified package name. Take care with what packages you clear. Some apps may revert to new install configuration like Kodi does.
+| -cleardata  |              | package name           | Clears data for the specified package name. Take care with what packages you clear. Some apps may revert to new install configuration like Kodi does.
 <br />
 <b>Example Usage</b><br />
 kill all running user installed (3rd Party) packages, start Kodi, and get space usage of Kodi<br />
