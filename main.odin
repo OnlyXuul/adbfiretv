@@ -7,9 +7,9 @@ import "core:fmt"
 import "core:strings"
 import "core:strconv"
 import "core:net"
-import "core:terminal/ansi"
-import "core:terminal"
 import "core:time"
+
+import "ansi_color"
 
 /******************************************************************************
  * Process execution data and procedures
@@ -39,7 +39,7 @@ exec_command :: proc(p: ^Process, command: os2.Process_Desc) {
 	p.stderr = trim_stdout_newline(p.stderr)
 	// print an error only if there was one
 	if len(p.stderr) != 0 {
-		printfln_c3(ERROR, "%s", p.stderr)
+		printfcln(ERROR, "%s", p.stderr)
 	}
 }
 
@@ -49,111 +49,6 @@ trim_stdout_newline :: proc(s: []u8) -> []u8 {
 		return s[:len(s)-1]
 	}
 	return s
-}
-
-/******************************************************************************
- * Custom message printing with color data and procedures
- ******************************************************************************/
-
-Attribute :: enum u8 {
-	BOLD                    = 1,
-	FAINT                   = 2,
-	ITALIC                  = 3, // Not widely supported.
-	UNDERLINE               = 4,
-	BLINK_SLOW              = 5,
-	BLINK_RAPID             = 6, // Not widely supported.
-	INVERT                  = 7, // Also known as reverse video.
-	HIDE                    = 8, // Not widely supported.
-	STRIKE                  = 9,
-	UNDERLINE_DOUBLE        = 21, // May be interpreted as "disable bold."
-	NO_BOLD_FAINT           = 22,
-	NO_ITALIC_BLACKLETTER   = 23,
-	NO_UNDERLINE            = 24,
-	NO_BLINK                = 25,
-	PROPORTIONAL_SPACING    = 26,
-	NO_REVERSE              = 27,
-	NO_HIDE                 = 28,
-	NO_STRIKE               = 29,
-	NO_PROPORTIONAL_SPACING = 50,
-	FRAMED                  = 51,
-	ENCIRCLED               = 52,
-	OVERLINED               = 53,
-	NO_FRAME_ENCIRCLE       = 54,
-	NO_OVERLINE             = 55,
-}
-
-FG_Color_3Bit :: enum u8 {
-	NONE       = 0,
-	FG_BLACK   = 30,
-	FG_RED     = 31,
-	FG_GREEN   = 32,
-	FG_YELLOW  = 33,
-	FG_BLUE    = 34,
-	FG_MAGENTA = 35,
-	FG_CYAN    = 36,
-	FG_WHITE   = 37,
-}
-
-BG_Color_3Bit :: enum u8 {
-	NONE       = 0,
-	BG_BLACK   = 40,
-	BG_RED     = 41,
-	BG_GREEN   = 42,
-	BG_YELLOW  = 43,
-	BG_BLUE    = 44,
-	BG_MAGENTA = 45,
-	BG_CYAN    = 46,
-	BG_WHITE   = 47,
-}
-
-ANSI_3Bit :: struct {
-	fg:  FG_Color_3Bit,
-	bg:  BG_Color_3Bit,
-	att: bit_set[Attribute],
-}
-
-// print colored text
-printf_c3 :: proc(ansi_format: ANSI_3Bit, printf_format: string, args: ..any) {
-	print_color_3bit(ansi_format, printf_format, ..args, newline = false)
-}
-
-printfln_c3 :: proc(ansi_format: ANSI_3Bit, printf_format: string, args: ..any) {
-	print_color_3bit(ansi_format, printf_format, ..args, newline = true)
-}
-
-// Wrap printf_format string with ANSI and then pass to printf.
-// Use either printf_c3 or printfln_c3 instead of this. It is internal.
-print_color_3bit :: proc(ansi_format: ANSI_3Bit, printf_format: string, args: ..any, newline := false) {
-	using terminal
-	using ansi
-	using fmt
-
-	pformat: string
-
-	if (ansi_format.fg != .NONE || ansi_format.bg != .NONE || card(ansi_format.att) != 0) && color_enabled && color_depth >= .Three_Bit {
-
-		pformat = CSI + RESET
-
-		for att in ansi_format.att {
-			pformat = tprintf("%s%s%i", pformat, ";", att)
-		}
-
-		if ansi_format.fg != .NONE {
-			pformat = tprintf("%s%s%i", pformat, ";" + FG_COLOR + ";", ansi_format.fg)
-		}
-
-		if ansi_format.bg != .NONE {
-			pformat = tprintf("%s%s%i", pformat, ";" + BG_COLOR + ";", ansi_format.bg)
-		}
-
-		pformat = tprintf("%s%s%s%s", pformat, SGR, printf_format, CSI + RESET + SGR)
-	}
-	else {
-		pformat = printf_format
-	}
-
-	printf(pformat, ..args)
-	if newline { println() }
 }
 
 /******************************************************************************
@@ -172,7 +67,7 @@ adb_connect :: proc(adb: ^os2.Process_Desc, p: ^Process) -> (success: bool) {
 
 			// invalid ip error
 			if !ip_ok {
-				printfln_c3(ERROR, "%s %s", "Invalid IP address:", os.args[idx+1])
+				printfcln(ERROR, "%s %s", "Invalid IP address:", os.args[idx+1])
 				return false
 			}
 
@@ -182,20 +77,20 @@ adb_connect :: proc(adb: ^os2.Process_Desc, p: ^Process) -> (success: bool) {
 
 			// os process errors
 			if !p.state.success {
-				printfln_c3(ERROR, "%v", p.state)
-				printfln_c3(ERROR, "%v", os2.error_string(p.error))
+				printfcln(ERROR, "%v", p.state)
+				printfcln(ERROR, "%v", os2.error_string(p.error))
 				return false
 			}
 
 			// adb connection status message
 			if starts_with(string(p.stdout), "connected") || starts_with(string(p.stdout), "already connected") {
 				// success
-				printfln_c3(STATUS, "%s", p.stdout)
+				printfcln(STATUS, "%s", p.stdout)
 				return true
 			}
 			else {
 				// failed
-				printfln_c3(ERROR, "%s", p.stdout)
+				printfcln(ERROR, "%s", p.stdout)
 				return false
 			}
 			break
@@ -203,7 +98,7 @@ adb_connect :: proc(adb: ^os2.Process_Desc, p: ^Process) -> (success: bool) {
 	}
 
 	// no connection command found
-	printfln_c3(ERROR, "%s", "-c <address> command required")
+	printfcln(ERROR, "%s", "-c <address> command required")
 	return false
 }
 
@@ -250,17 +145,17 @@ parse_package_size :: proc(data: []byte, pkg: string) {
 			if len(app_sizes) == plength && len(app_data_sizes) == plength && len(cache_sizes) == plength {
 				for p, p_idx in package_names {
 					if p == pkg {
-						printfln_c3(INFO, "%s %s", "Disk Usage of:", pkg)
+						printfcln(INFO, "%s %s", "Disk Usage of:", pkg)
 						app_size,   as_ok := strconv.parse_f64(app_sizes[p_idx])
 						data_size,  ds_ok := strconv.parse_f64(app_data_sizes[p_idx])
 						cache_size, cs_ok := strconv.parse_f64(cache_sizes[p_idx])
 						if as_ok && ds_ok && cs_ok {
-							printf_c3(LABEL, "%-12s", "App Size:")
-							printfln_c3(OUTPUT, "%f%s%s%f%s", app_size / 1048576, "MB ", "(", app_size / 1048576 / 1024, "GB)")
-							printf_c3(LABEL, "%-12s", "Data Size:")
-							printfln_c3(OUTPUT, "%f%s%s%f%s", data_size / 1048576, "MB ", "(", data_size / 1048576 / 1024, "GB)")
-							printf_c3(LABEL, "%-12s", "Cache Size:")
-							printfln_c3(OUTPUT, "%f%s%s%f%s", cache_size / 1048576, "MB ", "(", cache_size / 1048576 / 1024, "GB)")
+							printfc(LABEL, "%-12s", "App Size:")
+							printfcln(OUTPUT, "%f%s%s%f%s", app_size / 1048576, "MB ", "(", app_size / 1048576 / 1024, "GB)")
+							printfc(LABEL, "%-12s", "Data Size:")
+							printfcln(OUTPUT, "%f%s%s%f%s", data_size / 1048576, "MB ", "(", data_size / 1048576 / 1024, "GB)")
+							printfc(LABEL, "%-12s", "Cache Size:")
+							printfcln(OUTPUT, "%f%s%s%f%s", cache_size / 1048576, "MB ", "(", cache_size / 1048576 / 1024, "GB)")
 							break
 						}
 					}
@@ -280,24 +175,24 @@ parse_system_data_sizes :: proc(data: []byte) {
 	defer delete(lines)
 
 	{ // First two lines - Latency and Recent
-		printfln_c3(INFO, "%s", "Disk Speed:")
+		printfcln(INFO, "%s", "Disk Speed:")
 		for &line, l_idx in lines {
 			line_slice := split(line, ":")
 			defer delete(line_slice)
 			if line_slice[0] == "Latency" && len(line_slice) == 2 {
-				printf_c3(LABEL, "%s%-1s", line_slice[0], ":")
-				printfln_c3(OUTPUT, "%s", line_slice[1])
+				printfc(LABEL, "%s%-1s", line_slice[0], ":")
+				printfcln(OUTPUT, "%s", line_slice[1])
 			}
 			if starts_with(line_slice[0], "Recent Disk Write Speed (kB/s) = ") {
 				line_slice[0], _ = remove(line_slice[0], "Recent Disk Write Speed (kB/s) = ", 1)
-				printf_c3(LABEL, "%s ", "Recent Disk Write Speed (kB/s):")
-				printfln_c3(OUTPUT, "%s", line_slice[0])
+				printfc(LABEL, "%s ", "Recent Disk Write Speed (kB/s):")
+				printfcln(OUTPUT, "%s", line_slice[0])
 			}
 		}
 	}
 
 	{ // System data usage - defer delete(line_slice) happens at end of this context
-		printfln_c3(INFO, "%s", "System Disk Usage:")
+		printfcln(INFO, "%s", "System Disk Usage:")
 		system_data: [dynamic][]string
 		defer delete(system_data)
 		format_width := make([dynamic]int, 8, 8)
@@ -329,15 +224,15 @@ parse_system_data_sizes :: proc(data: []byte) {
 			// formated output
 			for line in system_data {
 				for word, w_idx in line {
-					if w_idx == 0 { printf_c3(LABEL, "%-*s", format_width[w_idx] + 1, word)	}
-					else { printf_c3(OUTPUT, "%-*s", format_width[w_idx] + 1, word) }
+					if w_idx == 0 { printfc(LABEL, "%-*s", format_width[w_idx] + 1, word)	}
+					else { printfc(OUTPUT, "%-*s", format_width[w_idx] + 1, word) }
 				}
 				fmt.println()
 			}
 	}
 
 	{ // disk usage break down by category
-		printfln_c3(INFO, "%s", "Categorical Disk Usage:")
+		printfcln(INFO, "%s", "Categorical Disk Usage:")
 		category_data: [dynamic][]string
 		defer delete(category_data)
 		format_width: [2]int
@@ -370,8 +265,8 @@ parse_system_data_sizes :: proc(data: []byte) {
 			// formated output
 			for line in category_data {
 				for word, w_idx in line {
-					if w_idx == 0 { printf_c3(LABEL, "%-*s", format_width[w_idx] + 1, word)	}
-					else { printf_c3(OUTPUT, "%-*s", format_width[w_idx] + 1, word) }
+					if w_idx == 0 { printfc(LABEL, "%-*s", format_width[w_idx] + 1, word)	}
+					else { printfc(OUTPUT, "%-*s", format_width[w_idx] + 1, word) }
 				}
 				fmt.println()
 			}
@@ -386,9 +281,16 @@ parse_system_data_sizes :: proc(data: []byte) {
 check_for_help :: proc() -> (help: bool) {
 	using strings
 
-	if len(os.args) == 1 { return true }
-	// only care if it's the first command, so -h can be used with -d command for dumpsys
-	if contains(os.args[1], "-h") || contains(os.args[1], "--help") {
+	no_color_argument := is_no_color_argument()
+
+	// no arguments provided or only -nc provided
+	if len(os.args) <= 1 || no_color_argument && len(os.args) <= 2 {
+		return true
+	}
+	// only care if -h is the first argument, so -h can be used with -d argument for dumpsys
+	// or second argument if -nc is used first
+	if (os.args[1] == "-h" || os.args[1] == "--help") ||
+		(no_color_argument && (os.args[2] == "-h" || os.args[2] == "--help")) {
 		help = true
 	}
 	return
@@ -423,16 +325,16 @@ split_max_width :: proc(width: int, text: string) -> (output: [dynamic]string) {
 print_usage :: proc() {
 	using time
 
-	printf_c3(INFO, "%-14s", ODIN_BUILD_PROJECT_NAME + " by:")
-	printfln_c3(ERROR, "%s", "xuul the terror dog")
+	printfc(INFO, "%-14s", ODIN_BUILD_PROJECT_NAME + " by:")
+	printfcln(ERROR, "%s", "xuul the terror dog")
 
 	buf: [MIN_YYYY_DATE_LEN]u8
-	printf_c3(LABEL, "%-14s", "Compile Date:")
-	printfln_c3(OUTPUT, "%s", to_string_yyyy_mm_dd(now(), buf[:]))
-	printf_c3(LABEL, "%-14s", "Odin Version:")
-	printfln_c3(OUTPUT, "%s\n", ODIN_VERSION)
+	printfc(LABEL, "%-14s", "Compile Date:")
+	printfcln(OUTPUT, "%s", to_string_yyyy_mm_dd(now(), buf[:]))
+	printfc(LABEL, "%-14s", "Odin Version:")
+	printfcln(OUTPUT, "%s\n", ODIN_VERSION)
 
-	printfln_c3(INFO, "%s", "Usage: adbfiretv [options] <required>\n")
+	printfcln(INFO, "%s", "Usage: adbfiretv [options] <required>\n")
 
 	// use one place to set up column formating
 	max_width := 86
@@ -443,148 +345,148 @@ print_usage :: proc() {
 	description: [dynamic]string
 	defer delete(description)
 
-	printfln_c3(LABEL, "%-*s%-*s%s", col[0] + col[1], "[Options]", col[2], "<Arguments>", "Description")
+	printfcln(LABEL, "%-*s%-*s%s", col[0] + col[1], "[Options]", col[2], "<Arguments>", "Description")
 
-	printf_c3(STATUS, "%-*s", col[0], "-h"); printf_c3(STATUS, "%-*s", col[1], "-help")
-	printf_c3(INFO, "%-*s", col[2], "<none>")
+	printfc(STATUS, "%-*s", col[0], "-h"); printfc(STATUS, "%-*s", col[1], "-help")
+	printfc(INFO, "%-*s", col[2], "<none>")
 	description = split_max_width(max_width - col[3],
 		"Prints this help message if it is the first argument.")
 	for d, i in description {
-		if i == 0 { printfln_c3(OUTPUT, "%s", d) }
-		else { printfln_c3(OUTPUT, "%*s", col[3] + len(d), d) }
+		if i == 0 { printfcln(OUTPUT, "%s", d) }
+		else { printfcln(OUTPUT, "%*s", col[3] + len(d), d) }
 	}
 
-	printf_c3(STATUS, "%-*s", col[0], "-nc"); printf_c3(STATUS, "%-13s", "-nocolor")
-	printf_c3(INFO, "%-*s", col[2], "<none>")
+	printfc(STATUS, "%-*s", col[0], "-nc"); printfc(STATUS, "%-13s", "-nocolor")
+	printfc(INFO, "%-*s", col[2], "<none>")
 	description = split_max_width(max_width - col[3],
 		"Disables colored output. "+
 		"Removes ANSI color codes to make scripting easier. "+
 		"Color is automatically disabled if it is disabled in the terminal.")
 	for d, i in description {
-		if i == 0 { printfln_c3(OUTPUT, "%s", d) }
-		else { printfln_c3(OUTPUT, "%*s", col[3] + len(d), d) }
+		if i == 0 { printfcln(OUTPUT, "%s", d) }
+		else { printfcln(OUTPUT, "%*s", col[3] + len(d), d) }
 	}
 
-	printf_c3(STATUS, "%-*s", col[0], "-v"); printf_c3(STATUS, "%-13s", "-version")
-	printf_c3(INFO, "%-*s", col[2], "<none>")
+	printfc(STATUS, "%-*s", col[0], "-v"); printfc(STATUS, "%-13s", "-version")
+	printfc(INFO, "%-*s", col[2], "<none>")
 	description = split_max_width(max_width - col[3],
 		"Outputs Android Version, FireOS Version, Device Model, and Serial Number.")
 	for d, i in description {
-		if i == 0 { printfln_c3(OUTPUT, "%s", d) }
-		else { printfln_c3(OUTPUT, "%*s", col[3] + len(d), d) }
+		if i == 0 { printfcln(OUTPUT, "%s", d) }
+		else { printfcln(OUTPUT, "%*s", col[3] + len(d), d) }
 	}
 
-	printf_c3(STATUS, "%-*s", col[0], "-r"); printf_c3(STATUS, "%-13s", "-running")
-	printf_c3(INFO, "%-*s", col[2], "<none>")
+	printfc(STATUS, "%-*s", col[0], "-r"); printfc(STATUS, "%-13s", "-running")
+	printfc(INFO, "%-*s", col[2], "<none>")
 	description = split_max_width(max_width - col[3],
 		"Outputs list of running (3rd Party) user applications.")
 	for d, i in description {
-		if i == 0 { printfln_c3(OUTPUT, "%s", d) }
-		else { printfln_c3(OUTPUT, "%*s", col[3] + len(d), d) }
+		if i == 0 { printfcln(OUTPUT, "%s", d) }
+		else { printfcln(OUTPUT, "%*s", col[3] + len(d), d) }
 	}
 
 
-	printf_c3(STATUS, "%-*s", col[0] + col[1], "-wake")
-	printf_c3(INFO, "%-*s", col[2], "<none>")
+	printfc(STATUS, "%-*s", col[0] + col[1], "-wake")
+	printfc(INFO, "%-*s", col[2], "<none>")
 	description = split_max_width(max_width - col[3],
 		"Attempts to wake the device. "+
 		"Only works if device is not asleep for long.")
 	for d, i in description {
-		if i == 0 { printfln_c3(OUTPUT, "%s", d) }
-		else { printfln_c3(OUTPUT, "%*s", col[3] + len(d), d) }
+		if i == 0 { printfcln(OUTPUT, "%s", d) }
+		else { printfcln(OUTPUT, "%*s", col[3] + len(d), d) }
 	}
 
-	printf_c3(STATUS, "%-*s", col[0] + col[1], "-sleep")
-	printf_c3(INFO, "%-*s", col[2], "<none>")
+	printfc(STATUS, "%-*s", col[0] + col[1], "-sleep")
+	printfc(INFO, "%-*s", col[2], "<none>")
 	description = split_max_width(max_width - col[3],
 		"Attempts to put the device into sleep mode. "+
 		"Recommend using this as the last command if using mulitples.")
 	for d, i in description {
-		if i == 0 { printfln_c3(OUTPUT, "%s", d) }
-		else { printfln_c3(OUTPUT, "%*s", col[3] + len(d), d) }
+		if i == 0 { printfcln(OUTPUT, "%s", d) }
+		else { printfcln(OUTPUT, "%*s", col[3] + len(d), d) }
 	}
 
-	printf_c3(STATUS, "%-*s", col[0], "-d"); printf_c3(STATUS, "%-13s", "-dumpsys")
-	printf_c3(INFO, "%-*s", col[2], "<see description>")
+	printfc(STATUS, "%-*s", col[0], "-d"); printfc(STATUS, "%-13s", "-dumpsys")
+	printfc(INFO, "%-*s", col[2], "<see description>")
 	description = split_max_width(max_width - col[3],
 		"Gets information from the device database. "+
 		"A typical argument may be 'power' or 'activity'. "+
 		"Place any argument that has spaces in quotes. "+
 		"Use '--help' as an argument to get dumpsys help.")
 	for d, i in description {
-		if i == 0 { printfln_c3(OUTPUT, "%s", d) }
-		else { printfln_c3(OUTPUT, "%*s", col[3] + len(d), d) }
+		if i == 0 { printfcln(OUTPUT, "%s", d) }
+		else { printfcln(OUTPUT, "%*s", col[3] + len(d), d) }
 	}
 
-	printf_c3(STATUS, "%-*s", col[0], "-k"); printf_c3(STATUS, "%-13s", "-kill")
-	printf_c3(INFO, "%-*s", col[2], "<all | package>")
+	printfc(STATUS, "%-*s", col[0], "-k"); printfc(STATUS, "%-13s", "-kill")
+	printfc(INFO, "%-*s", col[2], "<all | package>")
 	description = split_max_width(max_width - col[3],
 		"Stops the specified package name. "+
 		"If 'all' is provided, all (3rd Party) user packages are stopped.")
 	for d, i in description {
-		if i == 0 { printfln_c3(OUTPUT, "%s", d) }
-		else { printfln_c3(OUTPUT, "%*s", col[3] + len(d), d) }
+		if i == 0 { printfcln(OUTPUT, "%s", d) }
+		else { printfcln(OUTPUT, "%*s", col[3] + len(d), d) }
 	}
 
-	printf_c3(STATUS, "%-*s", col[0], "-l"); printf_c3(STATUS, "%-13s", "-launch")
-	printf_c3(INFO, "%-*s", col[2], "<package>")
+	printfc(STATUS, "%-*s", col[0], "-l"); printfc(STATUS, "%-13s", "-launch")
+	printfc(INFO, "%-*s", col[2], "<package>")
 	description = split_max_width(max_width - col[3],
 		"Starts the specified package name or brings it to the front if already running. "+
 		"Kodi supported. "+
 		"Others may or may not be depending if they require a unique 'Starting Intent'. "+
 		"Support may be added upon request.")
 	for d, i in description {
-		if i == 0 { printfln_c3(OUTPUT, "%s", d) }
-		else { printfln_c3(OUTPUT, "%*s", col[3] + len(d), d) }
+		if i == 0 { printfcln(OUTPUT, "%s", d) }
+		else { printfcln(OUTPUT, "%*s", col[3] + len(d), d) }
 	}
 
-	printf_c3(STATUS, "%-*s", col[0], "-m"); printf_c3(STATUS, "%-13s", "-memoryusage")
-	printf_c3(INFO, "%-*s", col[2], "<package>")
+	printfc(STATUS, "%-*s", col[0], "-m"); printfc(STATUS, "%-13s", "-memoryusage")
+	printfc(INFO, "%-*s", col[2], "<package>")
 	description = split_max_width(max_width - col[3],
 		"Outputs current memory usage of specified package name.")
 	for d, i in description {
-		if i == 0 { printfln_c3(OUTPUT, "%s", d) }
-		else { printfln_c3(OUTPUT, "%*s", col[3] + len(d), d) }
+		if i == 0 { printfcln(OUTPUT, "%s", d) }
+		else { printfcln(OUTPUT, "%*s", col[3] + len(d), d) }
 	}
 
-	printf_c3(STATUS, "%-*s", col[0], "-p"); printf_c3(STATUS, "%-13s", "-packages")
-	printf_c3(INFO, "%-*s", col[2], "<user | system>")
+	printfc(STATUS, "%-*s", col[0], "-p"); printfc(STATUS, "%-13s", "-packages")
+	printfc(INFO, "%-*s", col[2], "<user | system>")
 	description = split_max_width(max_width - col[3],
 		"Lists (3rd Party) 'user' installed packages or (FireOS) 'system' installed packages.")
 	for d, i in description {
-		if i == 0 { printfln_c3(OUTPUT, "%s", d) }
-		else { printfln_c3(OUTPUT, "%*s", col[3] + len(d), d) }
+		if i == 0 { printfcln(OUTPUT, "%s", d) }
+		else { printfcln(OUTPUT, "%*s", col[3] + len(d), d) }
 	}
 
-	printf_c3(STATUS, "%-*s", col[0], "-s"); printf_c3(STATUS, "%-13s", "-space")
-	printf_c3(INFO, "%-*s", col[2], "<system | package>")
+	printfc(STATUS, "%-*s", col[0], "-s"); printfc(STATUS, "%-13s", "-space")
+	printfc(INFO, "%-*s", col[2], "<system | package>")
 	description = split_max_width(max_width - col[3],
 		"Outputs disk space usage for either 'system' or specified package name.")
 	for d, i in description {
-		if i == 0 { printfln_c3(OUTPUT, "%s", d) }
-		else { printfln_c3(OUTPUT, "%*s", col[3] + len(d), d) }
+		if i == 0 { printfcln(OUTPUT, "%s", d) }
+		else { printfcln(OUTPUT, "%*s", col[3] + len(d), d) }
 	}
 
-	printf_c3(STATUS, "%-*s", col[0] + col[1], "-clearcache");
-	printf_c3(INFO, "%-*s", col[2], "<package>")
+	printfc(STATUS, "%-*s", col[0] + col[1], "-clearcache");
+	printfc(INFO, "%-*s", col[2], "<package>")
 	description = split_max_width(max_width - col[3],
 		"Clears cache for the specified package name. "+
 		"Take cear with what packages you clear. "+
 		"Some apps may revert to new install configuration like Kodi does.")
 	for d, i in description {
-		if i == 0 { printfln_c3(OUTPUT, "%s", d) }
-		else { printfln_c3(OUTPUT, "%*s", col[3] + len(d), d) }
+		if i == 0 { printfcln(OUTPUT, "%s", d) }
+		else { printfcln(OUTPUT, "%*s", col[3] + len(d), d) }
 	}
 
-	printf_c3(STATUS, "%-*s", col[0] + col[1], "-cleardata");
-	printf_c3(INFO, "%-*s", col[2], "<package>")
+	printfc(STATUS, "%-*s", col[0] + col[1], "-cleardata");
+	printfc(INFO, "%-*s", col[2], "<package>")
 	description = split_max_width(max_width - col[3],
 		"Clears data for the specified package name. "+
 		"Take cear with what packages you clear. "+
 		"Some apps may revert to new install configuration like Kodi does.")
 	for d, i in description {
-		if i == 0 { printfln_c3(OUTPUT, "%s", d) }
-		else { printfln_c3(OUTPUT, "%*s", col[3] + len(d), d) }
+		if i == 0 { printfcln(OUTPUT, "%s", d) }
+		else { printfcln(OUTPUT, "%*s", col[3] + len(d), d) }
 	}
 }
 
@@ -593,25 +495,36 @@ print_usage :: proc() {
  * Also color formating globals for printing
  ******************************************************************************/
 
+ANSI_3Bit :: ansi_color.ANSI_3Bit
+printfc   :: ansi_color.printfc
+printfcln :: ansi_color.printfcln
+
 LABEL  := ANSI_3Bit{fg = .FG_MAGENTA}
 INFO   := ANSI_3Bit{fg = .FG_YELLOW}
 STATUS := ANSI_3Bit{fg = .FG_GREEN}
 OUTPUT := ANSI_3Bit{fg = .FG_BLUE}
 ERROR  := ANSI_3Bit{fg = .FG_RED}
 
-main :: proc() {
+is_no_color_argument :: proc() -> (ok: bool) {
 	using strings
-
-	// check for no color command
 	if contains(join(os.args, " "), "-nc") || contains(join(os.args, " "), "-nocolor") {
 		LABEL  = {}
 		INFO   = {}
 		STATUS = {}
 		OUTPUT = {}
 		ERROR  = {}
+		return true
 	}
+	return false
+}
 
-	// check for help command
+main :: proc() {
+	using strings
+
+	// check for no color argument
+	is_no_color_argument()
+
+	// check for help argument
 	help := check_for_help()
 	if help {	print_usage(); os.exit(0)	}
 
@@ -623,10 +536,10 @@ main :: proc() {
 	connected := adb_connect(&adb, &p)
 
 	if connected {
-		// process command line options
+		// process arguments
 		for arg, idx in os.args {
 			switch arg {
-			// options with no parameters
+			// arguments with no parameters
 			case "-r", "-running":
 				adb.command = { "adb", "shell", "pm", "list", "packages", "-3" }
 				exec_command(&p, adb)
@@ -634,38 +547,38 @@ main :: proc() {
 				adb.command = {"adb", "shell", "ps", "-o", "ARGS=CMD"}
 				exec_command(&p, adb)
 				running_packages := split_lines(string(p.stdout))
-				printfln_c3(INFO, "%s", "Running User Installed (3rd Party) Packages:")
+				printfcln(INFO, "%s", "Running User Installed (3rd Party) Packages:")
 				for running in running_packages {
 					if contains(packages, running) {
-						printfln_c3(OUTPUT, "%s", running)
+						printfcln(OUTPUT, "%s", running)
 					}
 				}
 			case "-wake":
 				adb.command = {"adb", "shell", "input", "keyevent", "KEYCODE_WAKE"}
 				exec_command(&p, adb)
-				printfln_c3(INFO, "%s", "Attempting to wake device ...")
+				printfcln(INFO, "%s", "Attempting to wake device ...")
 			case "-sleep":
 				adb.command = {"adb", "shell", "input", "keyevent", "KEYCODE_SLEEP"}
 				exec_command(&p, adb)
-				printfln_c3(INFO, "%s", "Attempting to put device to sleep ...")
+				printfcln(INFO, "%s", "Attempting to put device to sleep ...")
 			case "-v", "-version":
 				adb.command = {"adb", "shell", "getprop", "ro.build.version.release"}
 				exec_command(&p, adb)
-				printf_c3(LABEL, "%-17s", "Android Version:")
-				printfln_c3(OUTPUT, "%s", p.stdout)
+				printfc(LABEL, "%-17s", "Android Version:")
+				printfcln(OUTPUT, "%s", p.stdout)
 				adb.command = {"adb", "shell", "getprop", "ro.build.version.name"}
 				exec_command(&p, adb)
-				printf_c3(LABEL, "%-17s", "FireOS Version:")
-				printfln_c3(OUTPUT, "%s", p.stdout)
+				printfc(LABEL, "%-17s", "FireOS Version:")
+				printfcln(OUTPUT, "%s", p.stdout)
 				adb.command = {"adb", "shell", "getprop", "ro.product.oemmodel"}
 				exec_command(&p, adb)
-				printf_c3(LABEL, "%-17s", "Device Model:")
-				printfln_c3(OUTPUT, "%s", p.stdout)
+				printfc(LABEL, "%-17s", "Device Model:")
+				printfcln(OUTPUT, "%s", p.stdout)
 				adb.command = {"adb", "shell", "getprop", "ro.serialno"}
 				exec_command(&p, adb)
-				printf_c3(LABEL, "%-17s", "Serial No:")
-				printfln_c3(OUTPUT, "%s", p.stdout)
-			// options containing 1 parameter
+				printfc(LABEL, "%-17s", "Serial No:")
+				printfcln(OUTPUT, "%s", p.stdout)
+			// arguments containing 1 parameter
 			case "-l", "launch":
 				if idx + 1 < len(os.args) {
 					if os.args[idx+1] == "org.xbmc.kodi" {
@@ -675,7 +588,10 @@ main :: proc() {
 						adb.command = {"adb", "shell", "am", "start", os.args[idx+1]}
 					}
 					exec_command(&p, adb)
-					printfln_c3(INFO, "%s", p.stdout)
+					printfcln(INFO, "%s", p.stdout)
+				}
+				else {
+					printfcln(ERROR, "%s%s%s", "Must provide an argument with ", os.args[idx],".")
 				}
 			case "-p", "-packages":
 				if idx + 1 < len(os.args) {
@@ -683,26 +599,29 @@ main :: proc() {
 						adb.command = {"adb", "shell", "pm", "list", "packages", "-3"}
 						exec_command(&p, adb)
 						packages, p_ok := remove(string(p.stdout), "package:", -1)
-						printfln_c3(INFO, "%s", "User Installed (3rd Party) Packages:")
-						printfln_c3(OUTPUT, "%s", packages)
+						printfcln(INFO, "%s", "User Installed (3rd Party) Packages:")
+						printfcln(OUTPUT, "%s", packages)
 					}
 					else if os.args[idx+1] == "system" {
 						adb.command = {"adb", "shell", "pm", "list", "packages", "-s"}
 						exec_command(&p, adb)
 						packages, p_ok := remove(string(p.stdout), "package:", -1)
-						printfln_c3(INFO, "%s", "System Installed (FireOS) Packages:")
-						printfln_c3(OUTPUT, "%s", packages)
+						printfcln(INFO, "%s", "System Installed (FireOS) Packages:")
+						printfcln(OUTPUT, "%s", packages)
 					}
-					else {
-						printfln_c3(ERROR, "%s", "Must provide an argument with -p. 'user' or 'system'")
-					}
+				}
+				else {
+					printfcln(ERROR, "%s%s%s", "Must provide an argument with ", os.args[idx],". 'user' or 'system'")
 				}
 			case "-d", "-dumpsys":
 				if idx + 1 < len(os.args) {
 					// can also do "--help" and other commands with this only if they are in quotes
 					adb.command = {"adb", "shell", "-x", "dumpsys", os.args[idx+1]}
 					exec_command(&p, adb)
-					printfln_c3(OUTPUT, "%s", p.stdout)
+					printfcln(OUTPUT, "%s", p.stdout)
+				}
+				else {
+					printfcln(ERROR, "%s%s%s", "Must provide an argument with ", os.args[idx],". See -help for more info.")
 				}
 			case "-k", "-kill":
 				if idx + 1 < len(os.args) {
@@ -716,40 +635,52 @@ main :: proc() {
 						for running in running_packages {
 							if contains(packages, running) {
 								adb.command = {"adb", "shell", "am", "force-stop", running}
-								printfln_c3(INFO, "%s %s", "Killing:", running)
+								printfcln(INFO, "%s %s", "Killing:", running)
 								exec_command(&p, adb)
 							}
 						}
 					}
 					else {
 						adb.command = {"adb", "shell", "am", "force-stop", os.args[idx+1]}
-						printfln_c3(INFO, "%s %s", "Attempting to kill:", os.args[idx+1])
+						printfcln(INFO, "%s %s", "Attempting to kill:", os.args[idx+1])
 						exec_command(&p, adb)
 					}
+				}
+				else {
+					printfcln(ERROR, "%s%s%s", "Must provide an argument with ", os.args[idx],". Either 'all' or package name.")
 				}
 			case "-clearcache":
 				if idx + 1 < len(os.args) {
 					adb.command = {"adb", "shell", "pm", "clear", "--cache-only", os.args[idx+1]}
-					printfln_c3(INFO, "%s %s", "Attempting to clear cache of:", os.args[idx+1])
+					printfcln(INFO, "%s %s", "Attempting to clear cache of:", os.args[idx+1])
 					exec_command(&p, adb)
+				}
+				else {
+					printfcln(ERROR, "%s%s%s", "Must provide an argument with ", os.args[idx],". i.e. package name.")
 				}
 			case "-cleardata":
 				if idx + 1 < len(os.args) {
 					adb.command = {"adb", "shell", "pm", "clear", os.args[idx+1]}
-					printfln_c3(INFO, "%s %s", "Attempting to clear data of:", os.args[idx+1])
+					printfcln(INFO, "%s %s", "Attempting to clear data of:", os.args[idx+1])
 					exec_command(&p, adb)
+				}
+				else {
+					printfcln(ERROR, "%s%s%s", "Must provide an argument with ", os.args[idx],". i.e. package name.")
 				}
 			case "-m", "memoryusage":
 				if idx + 1 < len(os.args) {
 					adb.command = {"adb", "shell", "dumpsys", "meminfo", os.args[idx+1]}
 					exec_command(&p, adb)
 					if strings.starts_with(string(p.stdout), "No process found") {
-						printfln_c3(ERROR, "%s", p.stdout)
+						printfcln(ERROR, "%s", p.stdout)
 					}
 					else {
-						printfln_c3(INFO, "%s %s", "Memory Usage:", os.args[idx+1])
-						printfln_c3(OUTPUT, "%s", p.stdout)
+						printfcln(INFO, "%s %s", "Memory Usage:", os.args[idx+1])
+						printfcln(OUTPUT, "%s", p.stdout)
 					}
+				}
+				else {
+					printfcln(ERROR, "%s%s%s", "Must provide an argument with ", os.args[idx],". i.e. package name.")
 				}
 			case "-s", "-space":
 				if idx + 1 < len(os.args) {
@@ -772,9 +703,12 @@ main :: proc() {
 							parse_package_size(p.stdout, os.args[idx+1])
 						}
 						else {
-							printfln_c3(ERROR, "%s %s", "Could not find:", os.args[idx+1])
+							printfcln(ERROR, "%s %s", "Could not find:", os.args[idx+1])
 						}
 					}
+				}
+				else {
+					printfcln(ERROR, "%s%s%s", "Must provide an argument with ", os.args[idx],". 'system' or package name")
 				}
 			case "-vol":
 				// experimental
@@ -793,6 +727,9 @@ main :: proc() {
 
 					if vol_ok { process_volume_change(volume, max_retry, &p, &adb) }
 				}
+				else {
+					printfcln(ERROR, "%s%s%s", "Must provide an argument with ", os.args[idx],".")
+				}
 			}
 			free_all(context.allocator)
 		}
@@ -802,7 +739,7 @@ main :: proc() {
 	if connected {
 	adb.command = { "adb","disconnect" }
 	exec_command(&p, adb)
-	printfln_c3(STATUS, "%s", p.stdout)
+	printfcln(STATUS, "%s", p.stdout)
 	}
 }
 
@@ -831,12 +768,12 @@ process_volume_change :: proc(volume: uint, max_retry: uint, p: ^Process, adb: ^
 				if uint(num) == volume {
 					volume_is_correct = true
 					volume_is, _ := remove(vol_service_output[2], "[v] ", 1)
-					printfln_c3(STATUS, "%s", volume_is)
+					printfcln(STATUS, "%s", volume_is)
 				}
 				else {
 					volume_is, _ := remove(vol_service_output[2], "[v] ", 1)
-					printf_c3(STATUS, "%s - ", volume_is)
-					printfln_c3(INFO, "%s", "retrying")
+					printfc(STATUS, "%s - ", volume_is)
+					printfcln(INFO, "%s", "retrying")
 				}
 			}
 		}
