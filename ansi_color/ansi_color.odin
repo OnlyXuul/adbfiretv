@@ -187,7 +187,7 @@ ANSI_24Bit :: struct {
 /***********************************************************
  * Print procedures:
  * printfc
- * printflnc
+ * printfcln
  ***********************************************************/
 
 printfc :: proc(ansi_format: ANSI_Format, printf_format: string, args: ..any) {
@@ -213,19 +213,19 @@ fprintfc :: proc(ansi_format: ANSI_Format, printf_format: string, args: ..any, n
 		terminal_ok = terminal.color_enabled && terminal.color_depth >= .Three_Bit
 		attributes = get_attributes(af.att)
 		if af.fg != .NONE {
-			color = fmt.tprintf("%s%s%i", color, ";" + ansi.FG_COLOR + ";", af.fg)
+			color = fmt.tprintf("%s%s%i", color, ";", af.fg)
 		}
 		if af.bg != .NONE {
-			color = fmt.tprintf("%s%s%i", color, ";" + ansi.BG_COLOR + ";", af.bg)
+			color = fmt.tprintf("%s%s%i", color, ";", af.bg)
 		}
 	case ANSI_4Bit:
 		terminal_ok = terminal.color_enabled && terminal.color_depth >= .Four_Bit
 		attributes = get_attributes(af.att)
 		if af.fg != .NONE {
-			color = fmt.tprintf("%s%s%i", color, ";" + ansi.FG_COLOR + ";", af.fg)
+			color = fmt.tprintf("%s%s%i", color, ";", af.fg)
 		}
 		if af.bg != .NONE {
-			color = fmt.tprintf("%s%s%i", color, ";" + ansi.BG_COLOR + ";", af.bg)
+			color = fmt.tprintf("%s%s%i", color, ";", af.bg)
 		}
 	case ANSI_8Bit:
 		terminal_ok = terminal.color_enabled && terminal.color_depth >= .Eight_Bit
