@@ -201,54 +201,65 @@ printfcln :: proc(ansi_format: ANSI_Format, printf_format: string, args: ..any) 
 fprintfc :: proc(ansi_format: ANSI_Format, printf_format: string, args: ..any, newline := false) {
 
 	get_attributes :: proc(attributes: bit_set[Attribute]) -> (att: string) {
-		for a in attributes {	att = fmt.tprintf("%s%s%i", att, ";", a) }
-		return
+		semi: string
+		for a in attributes {
+			semi = len(att) == 0 ? "" : ";"
+			att = fmt.tprintf("%s%s%i", att, semi, a) }
+			return
 	}
 
-	attributes, color, format: string
+	sgr_sequence, format, semi: string
 	terminal_ok: bool
 
 	switch af in ansi_format {
-	case ANSI_3Bit:
-		terminal_ok = terminal.color_enabled && terminal.color_depth >= .Three_Bit
-		attributes = get_attributes(af.att)
-		if af.fg != .NONE {
-			color = fmt.tprintf("%s%s%i", color, ";", af.fg)
-		}
-		if af.bg != .NONE {
-			color = fmt.tprintf("%s%s%i", color, ";", af.bg)
-		}
-	case ANSI_4Bit:
-		terminal_ok = terminal.color_enabled && terminal.color_depth >= .Four_Bit
-		attributes = get_attributes(af.att)
-		if af.fg != .NONE {
-			color = fmt.tprintf("%s%s%i", color, ";", af.fg)
-		}
-		if af.bg != .NONE {
-			color = fmt.tprintf("%s%s%i", color, ";", af.bg)
-		}
-	case ANSI_8Bit:
-		terminal_ok = terminal.color_enabled && terminal.color_depth >= .Eight_Bit
-		attributes = get_attributes(af.att)
-		if af.fg != nil {
-			color = fmt.tprintf("%s%s%i", color, ";" + ansi.FG_COLOR_8_BIT + ";", af.fg)
-		}
-		if af.bg != nil {
-			color = fmt.tprintf("%s%s%i", color, ";" + ansi.BG_COLOR_8_BIT + ";", af.bg)
-		}
-	case ANSI_24Bit:
-		terminal_ok = terminal.color_enabled && terminal.color_depth >= .True_Color
-		attributes = get_attributes(af.att)
-		if af.fg.r != nil && af.fg.g != nil && af.fg.b != nil {
-			color = fmt.tprintf("%s%s%i%s%i%s%i", color, ";" + ansi.FG_COLOR_24_BIT + ";", af.fg.r, ";", af.fg.g, ";", af.fg.b)
-		}
-		if af.bg.r != nil && af.bg.g != nil && af.bg.b != nil {
-			color = fmt.tprintf("%s%s%i%s%i%s%i", color, ";" + ansi.BG_COLOR_24_BIT + ";", af.bg.r, ";", af.bg.g, ";", af.bg.b)
-		}
+		case ANSI_3Bit:
+			terminal_ok = terminal.color_enabled && terminal.color_depth >= .Three_Bit
+			sgr_sequence = get_attributes(af.att)
+			if af.fg != .NONE {
+				semi = len(sgr_sequence) == 0 ? "" : ";"
+				sgr_sequence = fmt.tprintf("%s%s%i", sgr_sequence, semi, af.fg)
+			}
+			if af.bg != .NONE {
+				semi = len(sgr_sequence) == 0 ? "" : ";"
+				sgr_sequence = fmt.tprintf("%s%s%i", sgr_sequence, semi, af.bg)
+			}
+		case ANSI_4Bit:
+			terminal_ok = terminal.color_enabled && terminal.color_depth >= .Four_Bit
+			sgr_sequence = get_attributes(af.att)
+			if af.fg != .NONE {
+				semi = len(sgr_sequence) == 0 ? "" : ";"
+				sgr_sequence = fmt.tprintf("%s%s%i", sgr_sequence, semi, af.fg)
+			}
+			if af.bg != .NONE {
+				semi = len(sgr_sequence) == 0 ? "" : ";"
+				sgr_sequence = fmt.tprintf("%s%s%i", sgr_sequence, semi, af.bg)
+			}
+		case ANSI_8Bit:
+			terminal_ok = terminal.color_enabled && terminal.color_depth >= .Eight_Bit
+			sgr_sequence = get_attributes(af.att)
+			if af.fg != nil {
+				semi = len(sgr_sequence) == 0 ? "" : ";"
+				sgr_sequence = fmt.tprintf("%s%s%s%i", sgr_sequence, semi, ansi.FG_COLOR_8_BIT + ";", af.fg)
+			}
+			if af.bg != nil {
+				semi = len(sgr_sequence) == 0 ? "" : ";"
+				sgr_sequence = fmt.tprintf("%s%s%s%i", sgr_sequence, semi, ansi.BG_COLOR_8_BIT + ";", af.bg)
+			}
+		case ANSI_24Bit:
+			terminal_ok = terminal.color_enabled && terminal.color_depth >= .True_Color
+			sgr_sequence = get_attributes(af.att)
+			if af.fg.r != nil && af.fg.g != nil && af.fg.b != nil {
+				semi = len(sgr_sequence) == 0 ? "" : ";"
+				sgr_sequence = fmt.tprintf("%s%s%s%i%s%i%s%i", sgr_sequence, semi, ansi.FG_COLOR_24_BIT + ";", af.fg.r, ";", af.fg.g, ";", af.fg.b)
+			}
+			if af.bg.r != nil && af.bg.g != nil && af.bg.b != nil {
+				semi = len(sgr_sequence) == 0 ? "" : ";"
+				sgr_sequence = fmt.tprintf("%s%s%s%i%s%i%s%i", sgr_sequence, semi, ansi.BG_COLOR_24_BIT + ";", af.bg.r, ";", af.bg.g, ";", af.bg.b)
+			}
 	}
 
-	if (attributes != "" || color != "") && terminal_ok {
-		format = fmt.tprintf("%s%s%s%s%s%s", ansi.CSI + ansi.RESET, attributes, color, ansi.SGR, printf_format, ansi.CSI + ansi.RESET + ansi.SGR)
+	if (sgr_sequence != "") && terminal_ok {
+		format = fmt.tprintf("%s%s%s%s%s", ansi.CSI, sgr_sequence, ansi.SGR, printf_format, ansi.CSI + ansi.RESET + ansi.SGR)
 	}
 	else {
 		format = printf_format
